@@ -168,7 +168,7 @@ export const dummyConversationData = [
             handle: "ethanparker",
             avatar: "https://i.pravatar.cc/150?img=12",
             isOnline: false,
-            lastSeen: "2026-06-01T11:09:09.105Z",
+            lastSeen: "2026-08-15T16:58:09.105Z",
         },
         lastMessage: {
             _id: "msg_1",
@@ -177,11 +177,12 @@ export const dummyConversationData = [
             conversationId: "conv_1",
             text: "Hey Ethan, how's the project going?",
             read: false,
-            createdAt: "2026-06-01T12:53:13.642Z",
-            updatedAt: "2026-06-01T12:53:13.642Z",
+            createdAt: "2026-08-15T17:04:13.642Z",
+            updatedAt: "2026-08-15T17:04:13.642Z",
         },
-        updatedAt: "2026-06-01T12:53:13.701Z",
+        updatedAt: "2026-08-15T17:04:13.701Z",
     },
+
     {
         _id: "6a1d7f7086157496e5ece8bf",
         isGroup: false,
@@ -192,7 +193,7 @@ export const dummyConversationData = [
             handle: "oliviabennett",
             avatar: "https://i.pravatar.cc/150?img=13",
             isOnline: true,
-            lastSeen: "2026-05-22T12:41:24.076Z",
+            lastSeen: "2026-08-15T16:20:24.076Z",
         },
         lastMessage: {
             _id: "msg_2",
@@ -201,11 +202,12 @@ export const dummyConversationData = [
             conversationId: "6a1d7f7086157496e5ece8bf",
             text: "Let's catch up tomorrow.",
             read: true,
-            createdAt: "2026-06-01T12:52:51.077Z",
-            updatedAt: "2026-06-01T12:52:51.077Z",
+            createdAt: "2026-08-15T16:32:51.077Z",
+            updatedAt: "2026-08-15T16:32:51.077Z",
         },
-        updatedAt: "2026-06-01T12:52:51.122Z",
+        updatedAt: "2026-08-15T16:32:51.122Z",
     },
+
     {
         _id: "6a1d7f7086157496e5ece8c0",
         isGroup: false,
@@ -216,7 +218,7 @@ export const dummyConversationData = [
             handle: "liamcarter",
             avatar: "https://i.pravatar.cc/150?img=14",
             isOnline: false,
-            lastSeen: "2026-05-30T09:15:10.000Z",
+            lastSeen: "2026-08-14T21:15:10.000Z",
         },
         lastMessage: {
             _id: "msg_3",
@@ -225,11 +227,12 @@ export const dummyConversationData = [
             conversationId: "6a1d7f7086157496e5ece8c0",
             text: "Thanks for the update.",
             read: true,
-            createdAt: "2026-06-01T10:12:20.000Z",
-            updatedAt: "2026-06-01T10:12:20.000Z",
+            createdAt: "2026-08-14T22:12:20.000Z",
+            updatedAt: "2026-08-14T22:12:20.000Z",
         },
-        updatedAt: "2026-06-01T10:12:20.000Z",
+        updatedAt: "2026-08-14T22:12:20.000Z",
     },
+
     {
         _id: "6a1d7f7086157496e5ece8c1",
         isGroup: false,
@@ -240,7 +243,7 @@ export const dummyConversationData = [
             handle: "sophiareed",
             avatar: "https://i.pravatar.cc/150?img=15",
             isOnline: true,
-            lastSeen: "2026-06-01T13:05:00.000Z",
+            lastSeen: "2026-08-15T14:05:00.000Z",
         },
         lastMessage: {
             _id: "msg_4",
@@ -250,11 +253,12 @@ export const dummyConversationData = [
             mediaUrl: "https://picsum.photos/400/300",
             mediaType: "image",
             read: false,
-            createdAt: "2026-06-01T13:04:30.000Z",
-            updatedAt: "2026-06-01T13:04:30.000Z",
+            createdAt: "2026-08-15T14:04:30.000Z",
+            updatedAt: "2026-08-15T14:04:30.000Z",
         },
-        updatedAt: "2026-06-01T13:04:30.000Z",
+        updatedAt: "2026-08-15T14:04:30.000Z",
     },
+
     {
         _id: "6a1d7f7086157496e5ece8c2",
         isGroup: false,
@@ -265,7 +269,7 @@ export const dummyConversationData = [
             handle: "noahmitchell",
             avatar: "https://i.pravatar.cc/150?img=16",
             isOnline: false,
-            lastSeen: "2026-05-29T18:40:00.000Z",
+            lastSeen: "2026-08-12T18:40:00.000Z",
         },
         lastMessage: {
             _id: "msg_5",
@@ -274,11 +278,12 @@ export const dummyConversationData = [
             conversationId: "6a1d7f7086157496e5ece8c2",
             text: "Can you review my PR?",
             read: false,
-            createdAt: "2026-06-01T08:45:00.000Z",
-            updatedAt: "2026-06-01T08:45:00.000Z",
+            createdAt: "2026-08-12T08:45:00.000Z",
+            updatedAt: "2026-08-12T08:45:00.000Z",
         },
-        updatedAt: "2026-06-01T08:45:00.000Z",
+        updatedAt: "2026-08-12T08:45:00.000Z",
     },
+
     {
         _id: "6a1d7f7086157496e5ece8c3",
         isGroup: false,
@@ -289,7 +294,7 @@ export const dummyConversationData = [
             handle: "avacollins",
             avatar: "https://i.pravatar.cc/150?img=17",
             isOnline: true,
-            lastSeen: "2026-06-01T13:10:00.000Z",
+            lastSeen: "2026-08-15T10:10:00.000Z",
         },
         lastMessage: {
             _id: "msg_6",
@@ -298,10 +303,10 @@ export const dummyConversationData = [
             conversationId: "6a1d7f7086157496e5ece8c3",
             text: "See you at the meeting.",
             read: true,
-            createdAt: "2026-06-01T11:30:00.000Z",
-            updatedAt: "2026-06-01T11:30:00.000Z",
+            createdAt: "2026-08-15T11:30:00.000Z",
+            updatedAt: "2026-08-15T11:30:00.000Z",
         },
-        updatedAt: "2026-06-01T11:30:00.000Z",
+        updatedAt: "2026-08-15T11:30:00.000Z",
     },
 ];
 
