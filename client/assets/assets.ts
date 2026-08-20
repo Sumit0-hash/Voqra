@@ -549,11 +549,11 @@ export const dummyUsers = [
 
 export const dummyUserProfile = {
     _id: "current_user",
-    name: "GreatStack",
-    email: "greatstack@example.com",
-    handle: "greatstack",
-    avatar: "https://yt3.ggpht.com/SxtxAT2eoNsERZyC-2Q9t3YhFC0IPhlaYOFA8rciY3BkhfoR9VPAx5n8A8L6QNG3vjFXSsB7rQ=s240-c-k-c0x00ffffff-no-rj",
-    bio: "Hey there! I am using InstaChat.",
+    name: "Alex Morgan",
+    email: "alex.morgan@example.com",
+    handle: "alexmorgan",
+    avatar: "https://i.pravatar.cc/150?img=12",
+    bio: "Building things, learning every day 🚀",
     isOnline: true,
-    lastSeen: "2026-06-02T07:52:28.905Z",
+    lastSeen: "2026-08-17T13:16:00.000Z",
 };
