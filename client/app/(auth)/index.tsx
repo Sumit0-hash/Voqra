@@ -1,4 +1,4 @@
-import { View, Text, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native'
+import { View, Text, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native'
 import React, { useState } from 'react'
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,10 +8,16 @@ import { Colors } from '@/constants/Colors';
 import { SvgXml } from 'react-native-svg';
 import { TextInput } from 'react-native-gesture-handler';
 import { Ionicons } from "@expo/vector-icons";
+import { useClerk, useSignIn, useSignUp } from '@clerk/expo';
 
 type Mode = "login" | "register"
 
 export default function AuthScreen() {
+
+  const {signIn} = useSignIn();
+  const {signUp} = useSignUp();
+  const {setActive} = useClerk();
+
   const [mode, setMode] = useState<Mode>("login");
   const [name, setName] = useState("");
   const [handle, setHandle] = useState("");
@@ -20,23 +26,109 @@ export default function AuthScreen() {
   const [verificationCode, setVerificationCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [verifyingMode, setVerifyingMode] = useState<"login" | "login_mfa" | "register">("register");
 
   const router = useRouter();
 
   const handleSubmit = async () => {
+    if(!email.trim() || !password.trim()) return Alert.alert("Validation", "Please fill all fields.")
+    if(mode === "register" && (!name.trim() || !handle.trim())) return Alert.alert("Validation", "Please fill all fields.")
+
     setLoading(true)
-    setTimeout(() => {
+    try {
+      if(mode === "login"){
+        if(!signIn) return;
+        const result = await signIn.create({identifier: email, password});
+        if(result.error) {
+          throw result.error;
+        }
+        if(signIn.status === "complete") {
+          await setActive({session: signIn.createdSessionId});
+          router.replace("/(tabs)")
+        } else if(signIn.status === "needs_first_factor" && signIn.emailCode){
+          await signIn.emailCode.sendCode();
+          setVerifyingMode("login");
+          setVerifying(true);
+        } else if(signIn.status === "needs_second_factor" && signIn.mfa){
+          await signIn.mfa.sendEmailCode()
+          setVerifyingMode("login_mfa");
+          setVerifying(true);
+        }
+      } else if(mode === "register"){
+        if(!signUp) return;
+
+        const spaceIdx = name.trim().indexOf(" ");
+        const firstName = spaceIdx !== -1 ? name.trim().substring(0, spaceIdx) : name.trim();
+        const lastName = spaceIdx !== -1 ? name.trim().substring(spaceIdx + 1) : "";
+
+        const result = await signUp.create({
+          emailAddress: email,
+          password,
+          firstName,
+          lastName,
+          username: handle.toLowerCase().replace(/\s/g, ""),
+        })
+
+        if(result.error){
+          throw result.error;
+        }
+
+        const sendResult = await signUp.verifications.sendEmailCode()
+        if(sendResult.error){
+          throw sendResult.error
+        }
+        setVerifyingMode("register");
+        setVerifying(true);
+      }
+    } catch (err: any) {
+      Alert.alert("Authentication Error", err?.errors?.[0]?.message || err?.message || "Something went wrong. Please try again.");
+    } finally{
       setLoading(false)
-      setVerifying(true)
-    }, 1500)
+    }
   }
 
   const handleVerify = async ()=> {
-    setLoading(true)
-    setTimeout(() => {
-      setLoading(false)
-      router.replace("/(tabs)")
-    }, 1500)
+    if(!verificationCode.trim()) return Alert.alert("Validation", "Please enter verification code.") 
+
+      setLoading(true);
+      try {
+        if(verifyingMode === "register"){
+          if(!signUp) return;
+          const result = await signUp.verifications.verifyEmailCode({
+            code: verificationCode
+          })
+          if(result.error){
+            throw result.error;
+          }
+          if(signUp.status === "complete"){
+            setActive({session: signUp.createdSessionId})
+            router.replace("/(tabs)");
+          }else{
+            Alert.alert("Verification Failed", "Please check the code and try again.")
+          }
+        }else{
+          if(!signIn) return;
+          if(verifyingMode === "login_mfa"){
+            await signIn.mfa.verifyEmailCode({
+              code: verificationCode
+            })
+          }else{
+            await signIn.emailCode.verifyCode({
+              code: verificationCode
+            }) 
+          }
+          if(signIn.status === "complete"){
+            await setActive({session: signIn.createdSessionId})
+            router.replace("/(tabs)");
+          }else{
+            Alert.alert("Verification Failed", "Please check the code and try again.")
+          }
+        }
+      } catch (err: any) {
+        Alert.alert("Verification Error", err?.errors?.[0]?.message || err?.message || "Something went wrong. Please try again.");
+      } finally{
+        setLoading(false);
+      }
   }
 
   const svgMarkup = `<svg width="86" height="75" viewBox="0 0 86 75" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.251 59.385s-.693-15.968 4.246-24.97c4.938-9.003 21.044-21.136 21.044-21.136l10.352 10.306zm63.355-12.383s.693-15.968-4.245-24.97C65.423 13.029 49.316.896 49.316.896L38.965 11.203zm-1.217 28s.692-15.968-4.246-24.97c-4.938-9.003-21.044-21.136-21.044-21.136L37.747 39.203z" fill="#fff"/></svg>`
