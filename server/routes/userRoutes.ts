@@ -8,6 +8,6 @@ const userRouter = Router();
 userRouter.get("/", getUsers);
 userRouter.get("/search", searchUsers);
 userRouter.get("/profile", authMiddleware, getProfile);
-userRouter.put("/profile", upload.single("avatar"),authMiddleware , updateProfile);
+userRouter.put("/profile",authMiddleware, upload.single("avatar"), updateProfile);
 
 export default userRouter;
