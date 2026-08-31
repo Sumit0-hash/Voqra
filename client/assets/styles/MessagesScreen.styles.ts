@@ -2,7 +2,7 @@ import { StyleSheet } from "react-native";
 import { Colors } from "../../constants/Colors";
 
 export const styles = StyleSheet.create({
-    safe: {},
+    safe: {flex: 1,},
     header: {
         flexDirection: "row",
         alignItems: "center",
