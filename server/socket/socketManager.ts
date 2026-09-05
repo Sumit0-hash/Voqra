@@ -104,6 +104,9 @@ export async function handleConversationEvent(senderId: string, conversationId: 
     try {
         const conversation = await Conversation.findById(conversationId);
         if(!conversation) return;
+        const isParticipant = conversation.participants.some((p)=> String(p) === senderId);
+
+        if(!isParticipant) return;
 
         const payload = JSON.stringify(event);
 

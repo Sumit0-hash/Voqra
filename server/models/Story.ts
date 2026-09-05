@@ -9,12 +9,12 @@ export interface IStory extends Document {
 }
 
 const StorySchema = new Schema<IStory>({
-    user: {type: String, required: true},
-    mediaUrl: {type: String, required: true},
-    mediaType: {type: String, enum: ["image", "video"], required: true},
-    createdAt: {type: Date, default: Date.now, expires: 86400}, //24 hours
-    
-},{timestamps: true})
+    user: { type: String, ref: "User", required: true },
+    mediaUrl: { type: String, required: true },
+    mediaType: { type: String, enum: ["image", "video"], required: true },
+    createdAt: { type: Date, default: Date.now, expires: 86400 }, //24 hours
+
+}, { timestamps: true })
 
 const Story: Model<IStory> = mongoose.model("Story", StorySchema)
 
