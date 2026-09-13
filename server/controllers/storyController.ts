@@ -51,7 +51,7 @@ export const createStory = async (req: AuthRequest, res: Response) => {
         })
 
         await story.populate("user", "name avatar handle")
-        res.status(201).json({ success: false, story})
+        res.status(201).json({ success: true, story })
     } catch (err) {
         console.error("Story upload error:", err);
         res.status(500).json({
@@ -64,19 +64,22 @@ export const createStory = async (req: AuthRequest, res: Response) => {
 
 // get all recent stories(grouped by user)
 export const getStories = async (req: AuthRequest, res: Response) => {
-    const stories = await Story.find().sort({createdAt: -1}).populate("user", "name avatar handle");
+    const expiryCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const stories = await Story.find({ createdAt: { $gt: expiryCutoff } })
+        .sort({ createdAt: -1 })
+        .populate("user", "name avatar handle");
 
     // Group stories by user
-    const grouped: any ={};
-    stories.forEach((s:any)=>{
+    const grouped: any = {};
+    stories.forEach((s: any) => {
         const uid = String(s.user._id);
-        if(!grouped[uid]){
-            grouped[uid] ={
+        if (!grouped[uid]) {
+            grouped[uid] = {
                 user: s.user,
                 stories: []
             }
         }
         grouped[uid].stories.push(s);
     })
-    res.json({success: true, stories: Object.values(grouped)})
+    res.json({ success: true, stories: Object.values(grouped) })
 }

@@ -2,7 +2,6 @@ import { View, Text, TouchableOpacity, ActivityIndicator, FlatList } from 'react
 import React, { useEffect, useState } from 'react'
 import { Conversation, UserStory } from '@/types';
 import { useRouter } from 'expo-router';
-import { dummyConversationData } from '@/assets/assets';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { styles } from '@/assets/styles/MessagesScreen.styles';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,37 +10,52 @@ import { TextInput } from 'react-native-gesture-handler';
 import StoriesBar from '@/components/StoriesBar';
 import StoryViewer from '@/components/StoryViewer';
 import ConvoItem from '@/components/ConvoItem';
+import { api, useApp } from '@/context/AppContext';
 
 export default function MessagesScreen() {
 
-  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
-  const [selectedStory, setSelectedStory] = useState<UserStory|null>(null);
-  
+  const [selectedStory, setSelectedStory] = useState<UserStory | null>(null);
+  const { setSelectedConversation, conversations, setConversations, selectedConversation, } = useApp();
 
   const router = useRouter()
 
-  const fetchConversations =()=>{
-    setLoading(true)
-    setTimeout(()=>{
-      setConversations(dummyConversationData as any)
-      setLoading(false)
-    },1000)
-  }
+  const fetchConversations = async () => {
+    try {
+      setLoading(true);
+
+      const { data } = await api.get<{
+        success: boolean;
+        conversations: Conversation[];
+      }>("/api/messages/conversations");
+
+      if (data.success) {
+        setConversations(data.conversations);
+      } else {
+        setConversations([]);
+      }
+    } catch (error) {
+      console.log("Failed to fetch conversations:", error);
+      setConversations([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetchConversations()
+    fetchConversations();
   }, []);
 
   const lowerSearch = search.toLowerCase();
-  const filtered = search ? conversations.filter((c)=> c.participant?.name.toLowerCase().includes(lowerSearch) || c.participant?.handle.toLowerCase().includes(lowerSearch)
-) : conversations;
+  const filtered = search ? conversations.filter((c) => c.participant?.name.toLowerCase().includes(lowerSearch) || c.participant?.handle.toLowerCase().includes(lowerSearch)
+  ) : conversations;
 
-const openConvo = (c: Conversation)=>{
-  router.push(`/chat/${c._id}`)
+  const openConvo = (c: Conversation) => {
+    setSelectedConversation(c);
+    router.push(`/chat/${c._id}`)
 
-}
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -60,8 +74,8 @@ const openConvo = (c: Conversation)=>{
       <View style={styles.searchRow}>
         <Ionicons name="search" size={16} color={Colors.outlineVariant} />
         <TextInput style={styles.searchInput} value={search} onChangeText={setSearch} placeholder='Search conversations...' placeholderTextColor={Colors.outlineVariant} />
-        {search.length >0 && (
-          <TouchableOpacity onPress={()=>setSearch("")}>
+        {search.length > 0 && (
+          <TouchableOpacity onPress={() => setSearch("")}>
             <Ionicons name='close-circle' size={16} color={Colors.outlineVariant} />
           </TouchableOpacity>
         )
@@ -69,29 +83,46 @@ const openConvo = (c: Conversation)=>{
       </View>
 
       {/* Stories */}
-      <StoriesBar onViewStory={(us)=>setSelectedStory(us)} />
-        {selectedStory && <StoryViewer userStory={selectedStory} onClose={()=> setSelectedStory(null)} />}
+      <StoriesBar onViewStory={(us) => setSelectedStory(us)} />
+      {selectedStory && <StoryViewer userStory={selectedStory} onClose={() => setSelectedStory(null)} />}
       {/* Divider */}
       <View style={styles.divider} />
 
       {/* Conversation list */}
-      {loading ? (
-        <ActivityIndicator style={{marginTop: 40}} color={Colors.primary} />
-      ) : (
-        <FlatList 
-        data={filtered}
-        keyExtractor={(c)=>c._id}
-        contentContainerStyle={styles.listContent}
-        renderItem={({item})=> <ConvoItem convo={item} selected={false} onPress={()=>openConvo(item)} />}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Ionicons name='chatbubbles-outline' size={44} color={Colors.outlineVariant} />
-            <Text style={styles.emptyTitle}>No conversations yet</Text>
-            <Text style={styles.emptySubtitle}>Go to Search to start chatting</Text>
-          </View>
-        }
-        />
-      )}
+      <View style={{ flex: 1 }}>
+        {loading ? (
+          <ActivityIndicator
+            style={{ marginTop: 40 }}
+            color={Colors.primary}
+          />
+        ) : (
+          <FlatList
+            data={filtered}
+            keyExtractor={(c) => c._id}
+            contentContainerStyle={styles.listContent}
+            renderItem={({ item }) => (
+              <ConvoItem
+                convo={item}
+                selected={false}
+                onPress={() => openConvo(item)}
+              />
+            )}
+            ListEmptyComponent={
+              <View style={styles.empty}>
+                <Ionicons
+                  name="chatbubbles-outline"
+                  size={44}
+                  color={Colors.outlineVariant}
+                />
+                <Text style={styles.emptyTitle}>No conversations yet</Text>
+                <Text style={styles.emptySubtitle}>
+                  Go to Search to start chatting
+                </Text>
+              </View>
+            }
+          />
+        )}
+      </View>
     </SafeAreaView>
   )
 }

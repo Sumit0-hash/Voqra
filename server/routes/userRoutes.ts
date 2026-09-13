@@ -5,9 +5,11 @@ import { authMiddleware } from "../middlewares/auth.js";
 
 const userRouter = Router();
 
+userRouter.use(authMiddleware);
+
 userRouter.get("/", getUsers);
 userRouter.get("/search", searchUsers);
-userRouter.get("/profile", authMiddleware, getProfile);
-userRouter.put("/profile",authMiddleware, upload.single("avatar"), updateProfile);
+userRouter.get("/profile", getProfile);
+userRouter.put("/profile", upload.single("avatar"), updateProfile);
 
 export default userRouter;
