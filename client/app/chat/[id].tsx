@@ -1,7 +1,6 @@
 import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, FlatList, Image, TextInput, Alert } from 'react-native'
 import React, { useEffect, useRef, useState } from 'react'
-import { useRouter } from 'expo-router';
-import { dummyConversationData, dummyMessages, dummyUserProfile, dummyUsers } from '@/assets/assets';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { styles } from '@/assets/styles/ChatScreen.styles';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,80 +8,176 @@ import { Colors } from '@/constants/Colors';
 import { formatTime } from '@/utils/formatTime';
 import Avatar from '@/components/Avatar';
 import Bubble from '@/components/Bubble';
-import * as ImagePicker from "expo-image-picker"; 
+import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from 'expo-linear-gradient';
+import { api, useApp } from '@/context/AppContext';
+import { Message } from '@/types';
 
 export default function ChatScreen() {
 
+  const { id } = useLocalSearchParams<{ id: string }>()
   const router = useRouter()
-  let { auth, messages, users, selectedConversation, typingUsers } = {
-    auth: { user: dummyUserProfile },
-    messages: dummyMessages,
-    users: dummyUsers,
-    selectedConversation: dummyConversationData[0],
-    typingUsers: {
-      [dummyUsers[0]._id]: true,
-    }
-
-  }
+  let { auth, messages, users, selectedConversation, typingUsers, setConversations, setMessages, setSelectedConversation, sendWsEvent } = useApp();
 
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
   const [mediaUri, setMediaUri] = useState<string | null>(null);
+  const [mediaMime, setMediaMime] = useState<string>("image/jpeg");
+  const [mediaName, setMediaName] = useState<string>("media.jpg");
+
   const flatListRef = useRef<FlatList>(null);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout>>(null)
 
   const partner = selectedConversation?.participant;
 
+  // Load messages for this conversation
+  useEffect(() => {
+    if (!id) return;
+
+    const fetchMessages = async () => {
+      try {
+        setLoading(true);
+
+        const { data } = await api.get(
+          `/api/messages/conversations/${id}/messages`
+        );
+
+        if (data.success) {
+          setMessages(data.messages);
+        } else {
+          setMessages([]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch messages:", error);
+        setMessages([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMessages();
+  }, [id]);
+
   // Scroll to bottom when messages updates
   useEffect(() => {
-    if(messages.length > 0){
-      setTimeout(()=> flatListRef.current?.scrollToEnd({animated : true}), 100)
+    if (messages.length > 0) {
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100)
     }
-    
+
     return () => {
-      
+
     };
   }, [messages]);
 
-  const deleteChat = ()=>{}
+  const deleteChat = () => {
+    const msg = `Delete this chat? This cannot be undone.`;
+    Alert.alert("Delete Chat", msg, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete", style: "destructive", onPress: async () => {
+          try {
+            const { data } = await api.delete(`/api/messages/conversations/${selectedConversation?._id}`)
+            if (data.success) {
+              setConversations((prev) => prev.filter((c) => c._id !== selectedConversation?._id))
+              setSelectedConversation(null);
+              router.back();
+            }
+          } catch (error) {
+            Alert.alert("Error", "Failed to delete chat");
+          }
+        }
+      }
 
-  const pickMedia = async ()=>{
-    const {status} = await ImagePicker.requestCameraPermissionsAsync();
-    
-        if(status !== "granted"){
-          Alert.alert("Permission needed", "Allow photo access to send media.");
-          return;
-        }
-        const result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ["images", "videos"],
-          quality: 0.8,
-        });
-        if(!result.canceled && result.assets[0]){
-          const asset = result.assets[0];
-          setMediaUri(asset.uri);
-        }
+    ])
   }
 
-  const send = () => {
-    if(!text.trim() || !mediaUri || !selectedConversation) return;
+  const pickMedia = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (status !== "granted") {
+      Alert.alert("Permission needed", "Allow photo access to send media.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images", "videos"],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      setMediaUri(asset.uri);
+      setMediaMime(asset.mimeType || "image/jpeg");
+      setMediaName(asset.fileName || (asset.mimeType?.startsWith("video") ? "video.mp4" : "photo.jpg"))
+    }
+  }
+
+  const send = async () => {
+    if ((!text.trim() && !mediaUri) || !selectedConversation) return;
+
     setSending(true);
-    setTimeout(() => {
+
+    try {
+      const formData = new FormData();
+
+      formData.append("receiverId", partner!._id);
+      formData.append("conversationId", selectedConversation._id);
+
+      if (text.trim()) {
+        formData.append("text", text.trim());
+      }
+
+      if (mediaUri) {
+        formData.append("file", {
+          uri: mediaUri,
+          type: mediaMime,
+          name: mediaName,
+        } as any);
+      }
+
+      const { data } = await api.post<{
+        success: boolean;
+        message: Message;
+      }>("/api/messages/send", formData);
+
+      if (data.success) {
+        setMessages((prev) => [...prev, data.message]);
+
+        sendWsEvent({
+          type: "message",
+          receiverId: partner!._id,
+          payload: data.message,
+        });
+
+        setText("");
+        setMediaUri(null);
+      }
+    } catch (err: any) {
+      console.error("SEND MESSAGE ERROR:", err);
+
+      Alert.alert(
+        "Error",
+        err?.response?.data?.message || "Failed to send message."
+      );
+    } finally {
       setSending(false);
-      setText("");
-      setMediaUri(null);
-    }, 500);
-  }
-
-  const handleTyping = (val: string)=>{
+    }
+  };
+  const handleTyping = (val: string) => {
     setText(val);
+    const target = { receiverId: partner?._id };
+    if (!target.receiverId) return;
+    sendWsEvent({ type: "typing", ...target, isTyping: true });
 
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => {
+      sendWsEvent({ type: "typing", ...target, isTyping: false });
+    }, 1500)
   }
 
-  
 
-  const typingEntries = Object.entries(typingUsers).filter(([uid, isTyping])=>{
-    if(!isTyping || uid === auth.user?._id) return false;
+
+  const typingEntries = Object.entries(typingUsers).filter(([uid, isTyping]) => {
+    if (!isTyping || uid === auth.user?._id) return false;
     return partner?._id === uid
   })
 
@@ -109,7 +204,7 @@ export default function ChatScreen() {
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={()=> router.back()}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color={Colors.onSurface} />
         </TouchableOpacity>
 
@@ -120,7 +215,7 @@ export default function ChatScreen() {
             {headerName}
             <Text style={styles.headerHandle}>@{partner?.handle}</Text>
           </Text>
-          <Text style={[styles.headerSub, partner?.isOnline && {color: Colors.online}]}>{headerSub}</Text>
+          <Text style={[styles.headerSub, partner?.isOnline && { color: Colors.online }]}>{headerSub}</Text>
         </View>
 
         <View style={styles.headerActions}>
@@ -138,89 +233,93 @@ export default function ChatScreen() {
 
 
       {/* main */}
-      <KeyboardAvoidingView style={styles.kav} behavior={Platform.OS === "ios" ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
+      <KeyboardAvoidingView
+        style={styles.kav}
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      >
         {/* Messages */}
         {loading ? (
-          <ActivityIndicator style={{flex: 1}} color={Colors.primary} />
+          <ActivityIndicator style={{ flex: 1 }} color={Colors.primary} />
 
         ) : (
           <FlatList data={messages}
-          ref={flatListRef}
-          keyExtractor={(m)=>m._id}
-          contentContainerStyle={styles.messageList}
-          renderItem={({item: msg, index})=>{
-            const isMine = msg.sender === auth.user?._id;
-            const prev = messages[index - 1];
-            const showGap = !prev || prev.sender !== msg.sender;
-            return (
-              <View style={showGap && index > 0 ? {margin: 10} : {}}>
-                <Bubble msg={msg} isMine={isMine} />
-              </View>
-            )
-          }}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({animated: false})}
+            ref={flatListRef}
+            keyExtractor={(m) => m._id}
+            contentContainerStyle={styles.messageList}
+            renderItem={({ item: msg, index }) => {
+              const isMine = msg.sender === auth.user?._id;
+              const prev = messages[index - 1];
+              const showGap = !prev || prev.sender !== msg.sender;
+              return (
+                <View style={showGap && index > 0 ? { margin: 10 } : {}}>
+                  <Bubble msg={msg} isMine={isMine} />
+                </View>
+              )
+            }}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
           >
 
           </FlatList>
         )}
-      {/* Typing Indicator */}
+        {/* Typing Indicator */}
 
-      {typingEntries.length > 0 && (
-        <View style={styles.typingRow}>
-          {typingEntries.map(([uid])=>{
-            const u = users.find((x)=>x._id === uid) || partner;
-            return(
-              <Text key={uid} style={styles.typingText}>
-                {u?.name || "Someone"} is typing...
-              </Text>
-            )
+        {typingEntries.length > 0 && (
+          <View style={styles.typingRow}>
+            {typingEntries.map(([uid]) => {
+              const u = users.find((x) => x._id === uid) || partner;
+              return (
+                <Text key={uid} style={styles.typingText}>
+                  {u?.name || "Someone"} is typing...
+                </Text>
+              )
 
-          })}
-        </View>
-      )}
-
-      {/* Input bar */}
-      <View style={styles.inputBar}>
-        {/* Media preview */}
-        {mediaUri && (
-          <View style={styles.mediaPreview}>
-            <Image source={{uri: mediaUri}} style={styles.mediaThumb} />
-            <TouchableOpacity style={styles.mediaRemove} onPress={()=> setMediaUri(null)}>
-              <Ionicons name="close-circle" size={20} color="#fff" />
-            </TouchableOpacity>
+            })}
           </View>
         )}
-        <View style={styles.inputRow}>
-          <TouchableOpacity style={styles.attachBtn} onPress={pickMedia}>
+
+        {/* Input bar */}
+        <View style={styles.inputBar}>
+          {/* Media preview */}
+          {mediaUri && (
+            <View style={styles.mediaPreview}>
+              <Image source={{ uri: mediaUri }} style={styles.mediaThumb} />
+              <TouchableOpacity style={styles.mediaRemove} onPress={() => setMediaUri(null)}>
+                <Ionicons name="close-circle" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          )}
+          <View style={styles.inputRow}>
+            <TouchableOpacity style={styles.attachBtn} onPress={pickMedia}>
               <Ionicons name="image-outline" size={22} color={Colors.onSurfaceVariant} />
             </TouchableOpacity>
-            <TextInput 
-            style={styles.textInput}
-            value={text}
-            onChangeText={handleTyping}
-            placeholder='Message...'
-            placeholderTextColor={Colors.outlineVariant} 
-            multiline
-            maxLength={2000}
-             />
+            <TextInput
+              style={styles.textInput}
+              value={text}
+              onChangeText={handleTyping}
+              placeholder='Message...'
+              placeholderTextColor={Colors.outlineVariant}
+              multiline
+              maxLength={2000}
+            />
 
-             <TouchableOpacity disabled={!text.trim() && !mediaUri || sending} activeOpacity={0.85} onPress={send}>
+            <TouchableOpacity disabled={!text.trim() && !mediaUri || sending} activeOpacity={0.85} onPress={send}>
               <LinearGradient colors={[Colors.primary, Colors.primaryContainer]}
-              style={[styles.sendBtn, !text.trim() && !mediaUri && styles.sendBtnDisabled]}>
+                style={[styles.sendBtn, !text.trim() && !mediaUri && styles.sendBtnDisabled]}>
                 {sending ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
                   <Ionicons name="send" size={16} color="#fff" />
                 )}
               </LinearGradient>
-             </TouchableOpacity>
+            </TouchableOpacity>
 
+          </View>
         </View>
-      </View>
-        
+
       </KeyboardAvoidingView>
 
-      
+
 
     </SafeAreaView>
   )

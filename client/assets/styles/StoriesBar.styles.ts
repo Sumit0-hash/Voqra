@@ -3,10 +3,11 @@ import { Colors } from "../../constants/Colors";
 
 export const styles = StyleSheet.create({
     container: {
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        gap: 16,
-    },
+    height: 88,
+    paddingHorizontal: 16,
+    alignItems: "flex-start",
+    gap: 16,
+},
     storyItem: { alignItems: "center", gap: 6 },
     addCircle: {
         width: 56,
