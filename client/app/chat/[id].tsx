@@ -34,6 +34,7 @@ export default function ChatScreen() {
   // Load messages for this conversation
   useEffect(() => {
     if (!id) return;
+    let active = true;
 
     const fetchMessages = async () => {
       try {
@@ -42,6 +43,7 @@ export default function ChatScreen() {
         const { data } = await api.get(
           `/api/messages/conversations/${id}/messages`
         );
+        if (!active) return;
 
         if (data.success) {
           setMessages(data.messages);
@@ -49,14 +51,18 @@ export default function ChatScreen() {
           setMessages([]);
         }
       } catch (error) {
+        if (!active) return;
         console.error("Failed to fetch messages:", error);
         setMessages([]);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
     fetchMessages();
+    return () => {
+      active = false;
+    };
   }, [id]);
 
   // Scroll to bottom when messages updates
@@ -105,9 +111,10 @@ export default function ChatScreen() {
     });
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
+      const isVideo = asset.type === "video";
       setMediaUri(asset.uri);
-      setMediaMime(asset.mimeType || "image/jpeg");
-      setMediaName(asset.fileName || (asset.mimeType?.startsWith("video") ? "video.mp4" : "photo.jpg"))
+      setMediaMime(asset.mimeType || (isVideo ? "video/mp4" : "image/jpeg"));
+      setMediaName(asset.fileName || (isVideo ? "video.mp4" : "photo.jpg"));
     }
   }
 
